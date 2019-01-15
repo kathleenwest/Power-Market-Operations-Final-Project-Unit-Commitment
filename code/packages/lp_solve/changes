@@ -1,0 +1,5 @@
+18.12.04 mxlpsolve 5.1.0.0 released
+         This is the first release of this new MATLAB lpsolve driver.
+         It uses ideas from the lpmex implementation for lp_solve 2.3 from Jeffrey C. Kantor
+         but it was redesigned completely by Peter Notebaert for performance, functionality
+         and complete support of the lp_solve 5.1 API.

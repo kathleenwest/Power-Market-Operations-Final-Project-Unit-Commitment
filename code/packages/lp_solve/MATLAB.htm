@@ -1,0 +1,2197 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+	<HEAD>
+		<TITLE>Using lpsolve from MATLAB</TITLE>
+		<style TYPE="text/css"> BODY { font-family:verdana,arial,helvetica; margin:15; }
+	</style>
+	</HEAD>
+	<BODY>
+					<h1 align="left"><u>Using lpsolve from MATLAB</u></h1>
+<h3>MATLAB?</h3>
+<P>MATLAB<SUP>®</SUP> is a high-performance language for
+technical computing. It integrates computation, visualization, and programming
+in an easy-to-use environment where problems and solutions are expressed in
+familiar mathematical notation. Typical uses include</P>
+<UL>
+<LI>Math and computation
+<LI>Algorithm development
+<LI>Data acquisition
+<LI>Modelling, simulation, and prototyping
+<LI>Data analysis, exploration, and visualization
+<LI>Scientific and engineering graphics
+<LI>Application development, including graphical user interface building </LI>
+</UL>
+<P>MATLAB is an interactive system whose basic data element is
+an array that does not require dimensioning. This allows you to solve many
+technical computing problems, especially those with matrix and vector
+formulations, in a fraction of the time it would take to write a program in a
+scalar noninteractive language such as C or Fortran.</P>
+<P>The name MATLAB stands for <EM>matrix laboratory</EM>.
+MATLAB was originally written to provide easy access to matrix software
+developed by the LINPACK and EISPACK projects. Today, MATLAB engines incorporate
+the LAPACK and BLAS libraries, embedding the state of the art in software for
+matrix computation.</P>
+<P>MATLAB has evolved over a period of years with input from
+many users. In university environments, it is the standard instructional tool
+for introductory and advanced courses in mathematics, engineering, and science.
+In industry, MATLAB is the tool of choice for high-productivity research,
+development, and analysis.</P>
+
+<p>MATLAB features a family of add-on application-specific
+solutions called <EM>toolboxes</EM>. Very important to most users of MATLAB,
+toolboxes allow you to <EM>learn</EM> and <EM>apply</EM> specialized technology.
+Toolboxes are comprehensive collections of MATLAB functions (M-files) that
+extend the MATLAB environment to solve particular classes of problems. Areas in
+which toolboxes are available include signal processing, control systems, neural
+networks, fuzzy logic, wavelets, simulation, and many others.</p>
+
+<p>We will not discuss the specifics of MATLAB here but instead refer the reader to the
+<a href="http://www.mathworks.com/access/helpdesk/help/techdoc/">MATLAB</a> website and
+<a href="http://www.mathworks.com/access/helpdesk/help/helpdesk.shtml">documentation</a>.
+</p>
+
+<h3>MATLAB and lpsolve</h3>
+
+<p>lpsolve is callable from MATLAB via an external interface or MEX-function. As such, it looks like lpsolve is fully integrated
+with MATLAB. Matrices can directly be transferred between MATLAB and lpsolve in both directions. The complete interface
+is written in C so it has maximum performance. The whole lpsolve API is implemented with some extra's specific for
+MATLAB (especially for matrix support). So you have full control to the complete lpsolve functionality via the mxlpsolve
+MATLAB driver. If you find that this involves too much work to solve an lp model then you can also work via higher-level
+M-files that can make things a lot easier. See further in this article.
+</p>
+
+<h3>Installation</h3>
+
+<p>To make this possible, a driver program is needed: mxlpsolve (mxlpsolve.dll under Windows).
+This driver must be put in a directory known to MATLAB (specified via File, Set Path or via the MATLAB path command) and MATLAB can call the mxlpsolve solver.</p>
+
+<p>This driver calls lpsolve via the lpsolve shared library (lpsolve51.dll under Windows
+and liblpsolve51.so under Unix/Linux). This has the advantage that the mxlpsolve driver doesn't have to
+be recompiled when an update of lpsolve is provided. The shared library must be somewhere in the Windows path.</p>
+
+<p>So note the difference between the MATLAB lpsolve driver that is called mxlpsolve and the lpsolve library that implements the
+API that is called lpsolve51.</p>
+
+<p>There are also some MATLAB script files (.m) as a quick start.</p>
+
+<p>To test if everything is installed correctly, enter mxlpsolve in the MATLAB command window.
+If it gives the following, then everything is ok:</p>
+
+<pre>mxlpsolve MATLAB Interface version 5.1.0.0
+using lpsolve version 5.1.1.2
+
+Usage: [ret1, ret2, ...] = mxlpsolve('functionname', arg1, arg2, ...)
+</pre>
+
+<p>However, if you get the following:</p>
+
+<pre>mxlpsolve driver not found !!!
+Check if mxlpsolve.dll is on your system and in a directory known to MATLAB.
+Press enter to see the paths where MATLAB looks for the driver.
+</pre>
+
+<p>Then MATLAB can find the mxlpsolve.m file, but not the mxlpsolve.dll file.
+This dll should be in the same directory as the .m file.</p>
+
+<p>If you get the following:</p>
+
+<pre>??? Undefined function or variable 'mxlpsolve'.</pre>
+
+<p>Then MATLAB cannot find the mxlpsolve.* files. Enter path in the command line to see the MATLAB search path
+for its files. You can modify this path via File, Set Path. Specify the path where the mxlpsolve.* files are
+located on your system.</p>
+
+<p>If you get the following:</p>
+
+<pre>??? Failed to initialise lpsolve library.
+
+Error in ==> ...\mxlpsolve.dll
+</pre>
+
+<p>Then MATLAB can find the mxlpsolve driver program, but the driver program cannot find the lpsolve library
+that contains the lpsolve implementation. This library is called lpsolve51.dll and should be on your system
+in a directory that in the PATH environment variable. This path can be shown via the following command in MATLAB: !PATH</p>
+
+<p>The lpsolve51.dll files must be in one of these specified directories. It is common to place this in the WINDOWS\system32 folder.</p>
+
+<p>Note that it may also be necessary to restart MATLAB after having put the files in the specified directory.
+It was noted that MATLAB sometimes doesn't see the newly added files in folders until it is restarted.</p>
+
+<p>All this is developed and tested with MATLAB version 6.0.0.88 Release 12.</p>
+
+<h3>Solve an lp model from MATLAB via mxlpsolve</h3>
+
+<p>In the following text, &gt;&gt; before the MATLAB commands is the MATLAB prompt.
+Only the text after &gt;&gt; must be entered.
+</p>
+
+<p>To call an lpsolve function, the following syntax must be used:</p>
+
+<pre>&gt;&gt; [ret1, ret2, ...] = mxlpsolve('functionname', arg1, arg2, ...)</pre>
+
+<p>The return values are optional and depend on the function called. functionname must always be enclosed between single
+quotes to make it alphanumerical and it is case sensitive. The number and type of arguments depend on the function called.
+Some functions even have a variable number of arguments and a different behaviour occurs depending on the type of the argument.
+functionname can be (almost) any of the lpsolve API routines (see <a href="lp_solveAPIreference.htm">lp_solve API reference</a>)
+plus some extra MATLAB specific functions.
+Most of the lpsolve API routines use or return an lprec structure. To make things more robust in MATLAB, this structure
+is replaced by a handle. This is an incrementing number starting from 0 and the lprec structures are maintained
+internally by the mxlpsolve driver. However you will see not much (if any) difference in the use of it.</p>
+
+<p>Almost all callable functions can be found in the <a href="lp_solveAPIreference.htm">lp_solve API reference</a>.
+Some are exactly as described in the reference guide, others have a slightly different syntax to make maximum
+use of the MATLAB functionality. For example make_lp is used identical as described. But get_variables is slightly
+different. In the API reference, this function has two arguments. The first the lp handle and the second the
+resulting variables and this array must already be dimensioned. When lpsolve is used from MATLAB, nothing must
+be dimensioned in advance. The mxlpsolve driver takes care of dimensioning all return variables and they are
+always returned as return value of the call to mxlpsolve. Never as argument to the routine. This can be a single
+value as for get_objective (although MATLAB stores this in a 1x1 matrix) or a matrix or vector as in get_variables.
+In this case, get_variables returns a 4x1 matrix (vector) with the result of the 4 variables of the lp model.
+</p>
+
+<p>Note that you can get an overview of the available functionnames and their arguments by entering the following in MATLAB:</p>
+
+<pre>&gt;&gt; help mxlpsolve</pre>
+
+<h3>An example</h3>
+
+<p>(Note that you can execute this example by entering command per command as shown below or by just entering example1.
+This will execute example1.m. You can see its contents by entering type example1.m)</p>
+
+<pre>&gt;&gt; lp=mxlpsolve('make_lp', 0, 4);
+&gt;&gt; mxlpsolve('set_verbose', lp, 3);
+&gt;&gt; mxlpsolve('set_obj_fn', lp, [1, 3, 6.24, 0.1]);
+&gt;&gt; mxlpsolve('add_constraint', lp, [0, 78.26, 0, 2.9], 2, 92.3);
+&gt;&gt; mxlpsolve('add_constraint', lp, [0.24, 0, 11.31, 0], 1, 14.8);
+&gt;&gt; mxlpsolve('add_constraint', lp, [12.68, 0, 0.08, 0.9], 2, 4);
+&gt;&gt; mxlpsolve('set_lowbo', lp, 1, 28.6);
+&gt;&gt; mxlpsolve('set_lowbo', lp, 4, 18);
+&gt;&gt; mxlpsolve('set_upbo', lp, 4, 48.98);
+&gt;&gt; mxlpsolve('set_col_name', lp, 1, 'COLONE');
+&gt;&gt; mxlpsolve('set_col_name', lp, 2, 'COLTWO');
+&gt;&gt; mxlpsolve('set_col_name', lp, 3, 'COLTHREE');
+&gt;&gt; mxlpsolve('set_col_name', lp, 4, 'COLFOUR');
+&gt;&gt; mxlpsolve('set_row_name', lp, 1, 'THISROW');
+&gt;&gt; mxlpsolve('set_row_name', lp, 2, 'THATROW');
+&gt;&gt; mxlpsolve('set_row_name', lp, 3, 'LASTROW');
+&gt;&gt; mxlpsolve('write_lp', lp, 'a.lp');
+&gt;&gt; mxlpsolve('get_mat', lp, 1, 2)
+
+ans =
+
+   78.2600
+
+&gt;&gt; mxlpsolve('solve', lp)
+
+ans =
+
+     0
+
+&gt;&gt; mxlpsolve('get_objective', lp)
+
+ans =
+
+   31.7828
+
+&gt;&gt; mxlpsolve('get_variables', lp)
+
+ans =
+
+   28.6000
+         0
+         0
+   31.8276
+
+&gt;&gt; mxlpsolve('get_constraints', lp)
+
+ans =
+
+   92.3000
+    6.8640
+  391.2928
+
+&gt;&gt; mxlpsolve('delete_lp', lp);
+</pre>
+
+<p>Note that there are some commands that return an answer. To see the answer, the command was not terminated with
+a semicolon (;). If the semicolon is put at the end of a command, the answer is not shown. However it is also possible
+to write the answer in a variable. For example:
+</p>
+
+<pre>&gt;&gt; obj=mxlpsolve('get_objective', lp)
+
+obj =
+
+   31.7828
+</pre>
+
+<p>Or without echoing on screen:</p>
+
+<pre>&gt;&gt; obj=mxlpsolve('get_objective', lp);</pre>
+
+<p>The last command will only write the result in variable obj without showing anything on screen.
+get_variables and get_constraints return a vector with the result. This can also be put in a variable:</p>
+
+<pre>&gt;&gt; x=mxlpsolve('get_variables', lp);
+&gt;&gt; b=mxlpsolve('get_constraints', lp);
+</pre>
+
+<p>It is always possible to show the contents of a variable by just giving it as command:</p>
+
+<pre>&gt;&gt; x
+
+x =
+  28.6000
+        0
+        0
+  31.8276
+</pre>
+
+<h3>Matrices</h3>
+In MATLAB, all numerical data is stored in matrices; even a scalar variable. MATLAB also supports complex numbers
+(a + b * i with i=SQRT(-1)). mxlpsolve can only work with real numbers.
+MATLAB also supports sparse matrices. Sparse matrices are matrices where only the non-zero elements are provided
+and stored. This results in both less storage and faster calculation if there are a sufficient number of zero values
+in the matrix and there usually are. The mxlpsolve driver supports both dense and sparse matrices and their use
+is totally transparent to the user. Everywhere a matrix can be provided, it can be dense or sparse. In the above
+example all matrices were dense. For example:
+<pre>&gt;&gt; mxlpsolve('add_constraint', lp, [0.24, 0, 11.31, 0], 1, 14.8);</pre>
+
+<p>In sparse matrix notation, this can be written:</p>
+
+<pre>&gt;&gt; mxlpsolve('add_constraint', lp, sparse([0.24, 0, 11.31, 0]), 1, 14.8);</pre>
+
+<p>Most of the time, variables are used to provide the data:</p>
+
+<pre>&gt;&gt; mxlpsolve('add_constraint', lp, a1, 1, 14.8);</pre>
+
+<p>Where a1 is a matrix variable that can be dense or sparse.</p>
+
+<p>The mxlpsolve driver sees all provided matrices as sparse matrices. mxlpsolve also uses sparse matrices
+internally and data can be provided sparse via the ex routines. For example add_constraintex. The mxlpsolve
+driver always uses the ex routines to provide the data to lpsolve. Even if you call from MATLAB the routine
+names that would require a dense matrix (for example add_constraint), the mxlpsolve driver will always call the
+sparse version of the routine (for example add_constraintex). This results in the most performing behaviour.
+Note that if a dense matrix is provided, the dimension must exactly match the dimension that is expected by
+mxlpsolve. Matrices with too few or too much elements gives an 'invalid vector.' error. Sparse matrices can off
+course provide less elements (the non provided elements are seen as zero). However if too many elements are
+provided or an element with a too large index, again an 'invalid vector.' error is raised.</p>
+
+<p>Most of the time, mxlpsolve needs vectors (rows or columns).
+In all situations, it doesn't matter if the vectors are row or column vectors. The driver accepts them both.
+For example:</p>
+
+<pre>&gt;&gt; mxlpsolve('add_constraint', lp, [0.24; 0; 11.31; 0], 1, 14.8);</pre>
+
+<p>Which is a column vector, but it is also accepted.</p>
+
+<p>An important final note. Several lp_solve API routines accept a vector where the first element (element 0) is not used.
+Other lp_solve API calls do use the first element. In the MATLAB interface, there is never an unused element in the matrices.
+So if the lp_solve API specifies that the first element is not used, then this element is not in the MATLAB matrix.</p>
+
+<h3>Sets</h3>
+
+<p>All numerical data is stored in matrices. Alphanumerical data, however, is more difficult to store in matrices.
+Matrices require that each element has the same size (length) and that is difficult and unpractical for alphanumerical
+data. In a limited number of lpsolve routines, alphanumerical data is required or returned and in some also multiple
+elements. An example is set_col_name. For this, MATLAB sets are used. To specify a set of alphanumerical elements,
+the following notation is used: { 'element1', 'element2', ... }. Note the { and } symbols instead of [ and ] that
+are used with matrices.
+</p>
+
+<h3>Maximum usage of matrices/sets with mxlpsolve</h3>
+
+<p>Because MATLAB is all about matrices, all lpsolve API routines that need a column or row number to get/set information for that
+column/row are extended in the mxlpsolve MATLAB driver to also work with matrices. For example set_int in the API can
+only set the integer status for one column. If the status for several integer variables must be set, then set_int
+must be called multiple times. The mxlpsolve MATLAB driver however also allows specifying a vector to set the integer
+status of all variables at once. The API call is: return = mxlpsolve('set_int', lp_handle, column, must_be_int). The
+matrix version of this call is: return = mxlpsolve('set_int', lp_handle, [must_be_int]).
+The API call to return the integer status of a variable is: return = mxlpsolve('is_int', lp_handle, column). The
+matrix version of this call is: [is_int] = mxlpsolve('is_int', lp_handle)<br>
+Also note the get_mat and set_mat routines. In MATLAB these are extended to return/set the complete constraint matrix.
+See following example.
+</p>
+
+<p>Above example can thus also be done as follows:<br>
+(Note that you can execute this example by entering command per command as shown below or by just entering example2.
+This will execute example2.m. You can see its contents by entering type example2.m)</p>
+
+<pre>&gt;&gt; lp=mxlpsolve('make_lp', 0, 4);
+&gt;&gt; mxlpsolve('set_verbose', lp, 3);
+&gt;&gt; mxlpsolve('set_obj_fn', lp, [1, 3, 6.24, 0.1]);
+&gt;&gt; mxlpsolve('add_constraint', lp, [0, 78.26, 0, 2.9], 2, 92.3);
+&gt;&gt; mxlpsolve('add_constraint', lp, [0.24, 0, 11.31, 0], 1, 14.8);
+&gt;&gt; mxlpsolve('add_constraint', lp, [12.68, 0, 0.08, 0.9], 2, 4);
+&gt;&gt; mxlpsolve('set_lowbo', lp, [28.6, 0, 0, 18]);
+&gt;&gt; mxlpsolve('set_upbo', lp, [Inf, Inf, Inf, 48.98]);
+&gt;&gt; mxlpsolve('set_col_name', lp, {'COLONE', 'COLTWO', 'COLTHREE', 'COLFOUR'});
+&gt;&gt; mxlpsolve('set_row_name', lp, {'THISROW', 'THATROW', 'LASTROW'});
+&gt;&gt; mxlpsolve('write_lp', lp, 'a.lp');
+&gt;&gt; mxlpsolve('get_mat', lp)
+
+ans =
+
+         0   78.2600         0    2.9000
+    0.2400         0   11.3100         0
+   12.6800         0    0.0800    0.9000
+
+&gt;&gt; mxlpsolve('solve', lp)
+
+ans =
+
+     0
+
+&gt;&gt; mxlpsolve('get_objective', lp)
+
+ans =
+
+   31.7828
+
+&gt;&gt; mxlpsolve('get_variables', lp)
+
+ans =
+
+   28.6000
+         0
+         0
+   31.8276
+
+&gt;&gt; mxlpsolve('get_constraints', lp)
+
+ans =
+
+   92.3000
+    6.8640
+  391.2928
+</pre>
+
+<p>Note the usage of Inf in set_upbo. This stands for 'infinity'. Meaning an infinite upper bound.
+It is also possible to use -Inf to express minus infinity. This can for example be used to create a free variable.</p>
+
+<p>To show the full power of the matrices, let's now do some matrix calculations to check the solution.
+It works further on above example:</p>
+
+<pre>&gt;&gt; A=mxlpsolve('get_mat', lp);
+&gt;&gt; X=mxlpsolve('get_variables', lp);
+&gt;&gt; B = A * X
+
+B =
+   92.3000
+    6.8640
+  391.2928
+</pre>
+
+<p>So what we have done here is calculate the values of the constraints (RHS) by multiplying the constraint matrix
+with the solution vector. Now take a look at the values of the constraints that lpsolve has found:</p>
+
+<pre>&gt;&gt; mxlpsolve('get_constraints', lp)
+
+ans =
+
+   92.3000
+    6.8640
+  391.2928
+</pre>
+
+<p>Exactly the same as the calculated B vector, as expected.</p>
+
+<p>Also the value of the objective can be calculated in a same way:</p>
+
+<pre>&gt;&gt; C=mxlpsolve('get_obj_fn', lp);
+&gt;&gt; X=mxlpsolve('get_variables', lp);
+&gt;&gt; obj = C * X
+
+obj =
+
+   31.7828
+</pre>
+
+<p>So what we have done here is calculate the value of the objective by multiplying the objective vector
+with the solution vector. Now take a look at the value of the objective that lpsolve has found:</p>
+
+<pre>&gt;&gt; mxlpsolve('get_objective', lp)
+
+ans =
+
+   31.7828
+</pre>
+
+<p>Again exactly the same as the calculated obj value, as expected.</p>
+
+<h3>M-files</h3>
+
+<p>MATLAB can execute a sequence of statements stored in diskfiles. Such files are called
+"M-files" because they must have the file type of ".m" as the last part of their filename (extension).
+Much of your work with MATLAB will be in creating and refining M-files. M-files are
+usually created using your local editor.</p>
+
+<p>M-files can be compared with batch files or scripts. You can put MATLAB commands in them and execute them at
+any time. The M-file is executed like any other command, by entering its name (without the .m extension).</p>
+
+<p>The mxlpsolve MATLAB distribution contains some example M-files to demonstrate this.</p>
+
+<p>To see the contents of such a file, enter the command 'type filename'. You can also edit these files with your
+favourite text editor (or notepad).</p>
+
+<h4>example1.m</h4>
+
+<p>Contains the commands as shown in the first example of this article.</p>
+
+<h4>example2.m</h4>
+
+<p>Contains the commands as shown in the second example of this article.</p>
+
+<h4>lp_solve.m</h4>
+
+<p>This script uses the API to create a higher-level function called lp_solve.
+This function accepts as arguments some matrices and options to create and solve an lp model.
+See the beginning of the file or type help lp_solve or just lp_solve to see its usage:</p>
+
+<pre> LP_SOLVE  Solves mixed integer linear programming problems.
+
+   SYNOPSIS: [obj,x,duals] = lp_solve(f,a,b,e,vlb,vub,xint,scalemode,keep)
+
+      solves the MILP problem
+
+              max v = f'*x
+                a*x &lt;&gt; b
+                  vlb &lt;= x &lt;= vub
+                  x(int) are integer
+
+   ARGUMENTS: The first four arguments are required:
+
+            f: n vector of coefficients for a linear objective function.
+            a: m by n matrix representing linear constraints.
+            b: m vector of right sides for the inequality constraints.
+            e: m vector that determines the sense of the inequalities:
+                      e(i) = -1  ==&gt; Less Than
+                      e(i) =  0  ==&gt; Equals
+                      e(i) =  1  ==&gt; Greater Than
+          vlb: n vector of lower bounds. If empty or omitted,
+               then the lower bounds are set to zero.
+          vub: n vector of upper bounds. May be omitted or empty.
+         xint: vector of integer variables. May be omitted or empty.
+    scalemode: scale flag. Off when 0 or omitted.
+         keep: Flag for keeping the lp problem after it's been solved.
+               If omitted, the lp will be deleted when solved.
+
+   OUTPUT: A nonempty output is returned if a solution is found:
+
+          obj: Optimal value of the objective function.
+            x: Optimal value of the decision variables.
+        duals: solution of the dual problem.
+</pre>
+
+<p>Example of usage. To create and solve following lp-model:</p>
+
+<pre>max: -x1 + 2 x2;
+C1: 2x1 + x2 &lt; 5;
+-4 x1 + 4 x2 &lt;5;
+
+int x2,x1;
+</pre>
+
+<p>The following command can be used:</p>
+
+<pre>&gt;&gt; [obj, x]=lp_solve([-1, 2], [2, 1; -4, 4], [5, 5], [-1, -1], [], [], [1, 2])
+
+obj =
+
+     3
+
+
+x =
+
+     1
+     2
+</pre>
+
+<h4>lp_maker.m</h4>
+
+<p>This script is analog to the lp_solve script and also uses the API to create a higher-level function called lp_maker.
+This function accepts as arguments some matrices and options to create an lp model. Note that this scripts only
+creates a model and returns a handle.
+See the beginning of the file or type help lp_maker or just lp_maker to see its usage:</p>
+
+<pre>&gt;&gt; help lp_maker
+
+ LP_MAKER  Makes mixed integer linear programming problems.
+
+   SYNOPSIS: lp_handle = lp_maker(f,a,b,e,vlb,vub,xint,scalemode,setminim)
+      make the MILP problem
+        max v = f'*x
+          a*x &lt;&gt; b
+            x &gt;= vlb &gt;= 0
+            x &lt;= vub
+            x(int) are integer
+
+   ARGUMENTS: The first four arguments are required:
+            f: n vector of coefficients for a linear objective function.
+            a: m by n sparse matrix representing linear constraints.
+            b: m vector of right sides for the inequality constraints.
+            e: m vector that determines the sense of the inequalities:
+                      e(i) &lt; 0  ==&gt; Less Than
+                      e(i) = 0  ==&gt; Equals
+                      e(i) &gt; 0  ==&gt; Greater Than
+          vlb: n vector of non-negative lower bounds. If empty or omitted,
+               then the lower bounds are set to zero.
+          vub: n vector of upper bounds. May be omitted or empty.
+         xint: vector of integer variables. May be omitted or empty.
+    scalemode: scale flag. Off when 0 or omitted.
+     setminim: Set maximum lp when this flag equals 0 or omitted.
+
+   OUTPUT: lp_handle is an integer handle to the lp created.
+</pre>
+
+<p>Example of usage. To create following lp-model:</p>
+
+<pre>max: -x1 + 2 x2;
+C1: 2x1 + x2 &lt; 5;
+-4 x1 + 4 x2 &lt;5;
+
+int x2,x1;
+</pre>
+
+<p>The following command can be used:</p>
+
+<pre>&gt;&gt; lp=lp_maker([-1, 2], [2, 1; -4, 4], [5, 5], [-1, -1], [], [], [1, 2])
+
+lp =
+
+     0
+</pre>
+
+<p>To solve the model and get the solution:</p>
+
+<pre>&gt;&gt; mxlpsolve('solve', lp)
+
+ans =
+
+     0
+
+&gt;&gt; mxlpsolve('get_objective', lp)
+
+ans =
+
+     3
+
+&gt;&gt; mxlpsolve('get_variables', lp)
+
+ans =
+
+     1
+     2
+</pre>
+
+<p>Don't forget to free the handle and its associated memory when you are done:</p>
+
+<pre>&gt;&gt; mxlpsolve('delete_lp', lp);</pre>
+
+<h4>lpdemo.m</h4>
+
+<p>Contains several examples to build and solve lp models.</p>
+
+<h4>ex.m</h4>
+
+<p>Contains several examples to build and solve lp models.
+Also solves the lp_examples from the lp_solve distribution.</p>
+
+<h3>Overview of API routines</h3>
+
+<p>Note again that the MATLAB command 'help mxlpsolve' gives an overview of all functions that can be called via mxlpsolve with their arguments and return values.</p>
+
+<ul>
+	<li>
+		<a href="add_column.htm">add_column, add_columnex</a>
+		<ul>
+			<li>return = mxlpsolve('add_column', lp_handle,
+    [column])
+
+			<li>return = mxlpsolve('add_columnex', lp_handle,
+    [column])
+
+			<li>Both have the same interface from <a href="add_column.htm">add_column</a> but act as <a href="add_column.htm">add_columnex</a></li>
+		</ul>
+    <li>
+        <a href="add_constraint.htm">add_constraint, add_constraintex</a>
+        <ul>
+            <li>return = mxlpsolve('add_constraint', lp_handle,
+    [row], constr_type, rh)
+            <li>return = mxlpsolve('add_constraintex', lp_handle,
+    [row], constr_type, rh)
+            <li>Both have the same interface from <a href="add_constraint.htm">add_constraint</a> but act as <a href="add_constraint.htm">add_constraintex</a></li>
+        </ul>
+    <li>
+        <a href="add_SOS.htm">add_SOS</a>
+        <ul>
+            <li>return = mxlpsolve('add_SOS', lp_handle, name,
+    sostype, priority, [sosvars], [weights])
+            <li>The <i>count</i> argument in the API documentation is not needed in MATLAB since the number of elements is derived from the size of the sosvars and weights matrices. These must have the same size.</li>
+        </ul>
+    <li>
+        <a href="column_in_lp.htm">column_in_lp</a>
+        <ul>
+            <li>return = mxlpsolve('column_in_lp', lp_handle,
+    [column])
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="default_basis.htm">default_basis</a>
+        <ul>
+            <li>mxlpsolve('default_basis', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="del_column.htm">del_column</a>
+        <ul>
+            <li>return = mxlpsolve('del_column', lp_handle, column)
+
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="del_constraint.htm">del_constraint</a>
+        <ul>
+            <li>return = mxlpsolve('del_constraint', lp_handle,
+    del_row)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="delete_lp.htm">delete_lp</a>
+        <ul>
+            <li>mxlpsolve('delete_lp', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="free_lp.htm">free_lp</a>
+        <ul>
+            <li>mxlpsolve('free_lp', lp_handle)
+            <li>lp_handle is not changed as in the lpsolve API since it is a read_only input parameter. So it acts the same as delete_lp.</li>
+        </ul>
+    <li>
+        <a href="get_anti_degen.htm">get_anti_degen</a>
+        <ul>
+            <li>return = mxlpsolve('get_anti_degen', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_basis.htm">get_basis</a>
+        <ul>
+            <li>[bascolumn] = mxlpsolve('get_basis', lp_handle {,
+    nonbasic})
+            <li>The <i>bascolumn</i> argument in the API documentation is here the return value. The <i>nonbasic</i> argument is optional in MATLAB. If not provided, then 0 is used.</li>
+        </ul>
+    <li>
+        <a href="get_basiscrash.htm">get_basiscrash</a>
+        <ul>
+            <li>return = mxlpsolve('get_basiscrash', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_bb_depthlimit.htm">get_bb_depthlimit</a>
+        <ul>
+            <li>return = mxlpsolve('get_bb_depthlimit', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_bb_floorfirst.htm">get_bb_floorfirst</a>
+        <ul>
+            <li>return = mxlpsolve('get_bb_floorfirst', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_bb_rule.htm">get_bb_rule</a>
+        <ul>
+            <li>return = mxlpsolve('get_bb_rule', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_bounds_tighter.htm">get_bounds_tighter</a>
+        <ul>
+            <li>return = mxlpsolve('get_bounds_tighter', lp_handle)
+
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_break_at_value.htm">get_break_at_value</a>
+        <ul>
+            <li>return = mxlpsolve('get_break_at_value', lp_handle)
+
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_col_name.htm">get_col_name</a>
+        <ul>
+            <li>name = mxlpsolve('get_col_name', lp_handle, column)
+
+            <li>[names] = mxlpsolve('get_col_name', lp_handle)
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows retrieving the values into a MATLAB matrix.</li>
+        </ul>
+    <li>
+        <a href="get_column.htm">get_column</a>
+        <ul>
+            <li>[column, return] = mxlpsolve('get_column',
+    lp_handle, col_nr)
+            <li>The <i>column</i> argument in
+    the API documentation is here the first return value.
+            <li>The return code of the call is the second return value.</li>
+        </ul>
+    <li>
+        <a href="get_constr_type.htm">get_constr_type</a>
+        <ul>
+            <li>return = mxlpsolve('get_constr_type', lp_handle,
+    row)
+            <li>[constr_type] = mxlpsolve('get_constr_type',
+    lp_handle)
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows retrieving the values into a MATLAB matrix.</li>
+        </ul>
+    <li>
+        <a href="get_constraints.htm">get_constraints</a>
+        <ul>
+            <li>[constr, return] = mxlpsolve('get_constraints',
+    lp_handle)
+            <li>The <i>constr</i> argument in
+    the API documentation is here the first return value.
+            <li>The return code of the call is the second return value.</li>
+        </ul>
+    <li>
+        <a href="get_sensitivity_rhs.htm">get_dual_solution</a>
+        <ul>
+            <li>[duals, return] = mxlpsolve('get_dual_solution',
+    lp_handle)
+            <li>The <i>duals</i> argument in
+    the API documentation is here the first return value.
+            <li>In the API, element 0 is not used and values start
+    from element 1. In MATLAB, there is no unused element in the matrix.
+            <li>The return code of the call is the second return value.</li>
+        </ul>
+    <li>
+        <a href="get_epsb.htm">get_epsb</a>
+        <ul>
+            <li>return = mxlpsolve('get_epsb', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_epsd.htm">get_epsd</a>
+        <ul>
+            <li>return = mxlpsolve('get_epsd', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_epsel.htm">get_epsel</a>
+        <ul>
+            <li>return = mxlpsolve('get_epsel', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_epsint.htm">get_epsint</a>
+        <ul>
+            <li>return = mxlpsolve('get_epsint', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_epsperturb.htm">get_epsperturb</a>
+        <ul>
+            <li>return = mxlpsolve('get_epsperturb', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_epspivot.htm">get_epspivot</a>
+        <ul>
+            <li>return = mxlpsolve('get_epspivot', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_improve.htm">get_improve</a>
+        <ul>
+            <li>return = mxlpsolve('get_improve', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_infinite.htm">get_infinite</a>
+        <ul>
+            <li>return = mxlpsolve('get_infinite', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_lowbo.htm">get_lowbo</a>
+        <ul>
+            <li>return = mxlpsolve('get_lowbo', lp_handle, column)
+            <li>[return] = mxlpsolve('get_lowbo', lp_handle)
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows retrieving the values into a MATLAB matrix.</li>
+        </ul>
+    <li>
+        <a href="get_lp_index.htm">get_lp_index</a>
+        <ul>
+            <li>return = mxlpsolve('get_lp_index', lp_handle,
+    orig_index)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_lp_name.htm">get_lp_name</a>
+        <ul>
+            <li>name = mxlpsolve('get_lp_name', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_mat.htm">get_mat</a>
+        <ul>
+            <li>value = mxlpsolve('get_mat', lp_handle, row, col)
+            <li>[matrix, return] = mxlpsolve('get_mat', lp_handle)
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows retrieving the values into a MATLAB matrix in the first return value.
+                The return code of the call is the second return value.</li>
+        </ul>
+    <li>
+        <a href="get_max_level.htm">get_max_level</a>
+        <ul>
+            <li>return = mxlpsolve('get_max_level', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_maxpivot.htm">get_maxpivot</a>
+        <ul>
+            <li>return = mxlpsolve('get_maxpivot', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_mip_gap.htm">get_mip_gap</a>
+        <ul>
+            <li>return = mxlpsolve('get_mip_gap', lp_handle,
+    absolute)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_nameindex.htm">get_nameindex</a>
+        <ul>
+            <li>return = mxlpsolve('get_nameindex', lp_handle, name, isrow)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_Ncolumns.htm">get_Ncolumns</a>
+        <ul>
+            <li>return = mxlpsolve('get_Ncolumns', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_negrange.htm">get_negrange</a>
+        <ul>
+            <li>return = mxlpsolve('get_negrange', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_nonzeros.htm">get_nonzeros</a>
+        <ul>
+            <li>return = mxlpsolve('get_nonzeros', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_Norig_columns.htm">get_Norig_columns</a>
+        <ul>
+            <li>return = mxlpsolve('get_Norig_columns', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_Norig_rows.htm">get_Norig_rows</a>
+        <ul>
+            <li>return = mxlpsolve('get_Norig_rows', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_Nrows.htm">get_Nrows</a>
+        <ul>
+            <li>return = mxlpsolve('get_Nrows', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_obj_bound.htm">get_obj_bound</a>
+        <ul>
+            <li>return = mxlpsolve('get_obj_bound', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_objective.htm">get_objective</a>
+        <ul>
+            <li>return = mxlpsolve('get_objective', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_orig_index.htm">get_orig_index</a>
+        <ul>
+            <li>return = mxlpsolve('get_orig_index', lp_handle,
+    lp_index)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_col_name.htm">get_origcol_name</a>
+        <ul>
+            <li>name = mxlpsolve('get_origcol_name', lp_handle,
+    column)
+            <li>[names] = mxlpsolve('get_origcol_name', lp_handle)
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows retrieving the values into a MATLAB matrix.</li>
+        </ul>
+    <li>
+        <a href="get_row_name.htm">get_origrow_name</a>
+        <ul>
+            <li>name = mxlpsolve('get_origrow_name', lp_handle,
+    row)
+            <li>[names] = mxlpsolve('get_origrow_name', lp_handle)
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows retrieving the values into a MATLAB matrix.</li>
+        </ul>
+    <li>
+        <a href="get_pivoting.htm">get_pivoting</a>
+        <ul>
+            <li>return = mxlpsolve('get_pivoting', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_presolve.htm">get_presolve</a>
+        <ul>
+            <li>return = mxlpsolve('get_presolve', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_primal_solution.htm">get_primal_solution</a>
+        <ul>
+            <li>[pv, return] = mxlpsolve('get_primal_solution',
+    lp_handle)
+            <li>The <i>pv</i> argument in the
+    API documentation is here the first return value.
+            <li>The return code of the call is the second return value.</li>
+        </ul>
+    <li>
+        <a href="get_print_sol.htm">get_print_sol</a>
+        <ul>
+            <li>return = mxlpsolve('get_print_sol', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_constraints.htm">get_ptr_constraints</a>
+        <ul>
+            <li>Not implemented.</li>
+        </ul>
+    <li>
+        <a href="get_sensitivity_rhs.htm">get_ptr_dualsolution</a>
+        <ul>
+            <li>Not implemented.</li>
+        </ul>
+    <li>
+        <a href="get_primal_solution.htm">get_ptr_primal_solution</a>
+        <ul>
+            <li>Not implemented.</li>
+        </ul>
+    <li>
+        <a href="get_sensitivity_obj.htm">get_ptr_sensitivity_obj, get_ptr_sensitivity_objex</a>
+        <ul>
+            <li>Not implemented.</li>
+        </ul>
+    <li>
+        <a href="get_sensitivity_rhs.htm">get_ptr_sensitivity_rhs</a>
+        <ul>
+            <li>Not implemented.</li>
+        </ul>
+    <li>
+        <a href="get_variables.htm">get_ptr_variables</a>
+        <ul>
+            <li>Not implemented.</li>
+        </ul>
+    <li>
+        <a href="get_rh.htm">get_rh</a>
+        <ul>
+            <li>return = mxlpsolve('get_rh', lp_handle, row)
+            <li>[rh] = mxlpsolve('get_rh', lp_handle)
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows retrieving the values into a MATLAB matrix. Note that in this case, the value of row 0 is not returned.</li>
+        </ul>
+    <li>
+        <a href="get_rh_range.htm">get_rh_range</a>
+        <ul>
+            <li>return = mxlpsolve('get_rh_range', lp_handle, row)
+            <li>[rh_ranges] = mxlpsolve('get_rh_range', lp_handle)
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows retrieving the values into a MATLAB matrix.</li>
+        </ul>
+    <li>
+        <a href="get_row.htm">get_row</a>
+        <ul>
+            <li>[row, return] = mxlpsolve('get_row', lp_handle,
+    row_nr)
+            <li>The <i>row</i> argument in the
+    API documentation is here the first return value.
+            <li>In the API, element 0 is not used and values start
+    from element 1. In MATLAB, there is no unused element in the matrix.
+            <li>The return code of the call is the second return value.</li>
+        </ul>
+    <li>
+        <a href="get_row_name.htm">get_row_name</a>
+        <ul>
+            <li>name = mxlpsolve('get_row_name', lp_handle, row)
+            <li>[names] = mxlpsolve('get_row_name', lp_handle)
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows retrieving the values into a MATLAB matrix.</li>
+        </ul>
+    <li>
+        <a href="get_scalelimit.htm">get_scalelimit</a>
+        <ul>
+            <li>return = mxlpsolve('get_scalelimit', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_scaling.htm">get_scaling</a>
+        <ul>
+            <li>return = mxlpsolve('get_scaling', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_sensitivity_obj.htm">get_sensitivity_obj, get_sensitivity_objex</a>
+        <ul>
+            <li>[objfrom, objtill, objfromvalue, objtillvalue,
+    return] = mxlpsolve('get_sensitivity_obj', lp_handle)
+            <li>[objfrom, objtill, objfromvalue, objtillvalue,
+    return] = mxlpsolve('get_sensitivity_objex', lp_handle)
+            <li>The <i>objfrom</i>, <i>objtill</i>, <i>objfromvalue</i>, <i>objtillvalue</i> arguments in the API documentation
+    are here the return values. Note that MATLAB allows the return of fewer
+    variables.&nbsp;For example if only objfrom and objtill are needed then the
+    call can be [objfrom, objtill] = mxlpsolve('get_sensitivity_obj',
+    lp_handle). The unrequested values are even not calculated.
+            <li>Since the API routine doesn't calculate the <i>objtillvalue</i> value at this time, MATLAB always
+    returns a zero vector for this.
+            <li>The return code of the call is the last value.
+            <li>get_sensitivity_obj and get_sensitivity_objex are both implemented, but have the same functionality.</li>
+        </ul>
+    <li>
+        <a href="get_sensitivity_rhs.htm">get_sensitivity_rhs, get_sensitivity_rhsex</a>
+        <ul>
+            <li>[duals, dualsfrom, dualstill, return] =
+    mxlpsolve('get_sensitivity_rhs', lp_handle)
+            <li>[duals, dualsfrom, dualstill, return] =
+    mxlpsolve('get_sensitivity_rhsex', lp_handle)
+            <li>The <i>duals</i>, <i>dualsfrom</i>, <i>dualstill</i>
+    arguments in the API documentation are here the return values. Note that
+    MATLAB allows the return of fewer variables. For example if only duals is
+    needed then the call can be [duals] = mxlpsolve('get_sensitivity_rhs',
+    lp_handle). The unrequested values are even not calculated.
+            <li>The return code of the call is the last value.
+            <li>get_sensitivity_rhs and get_sensitivity_rhsex are both implemented, but have the same functionality.</li>
+        </ul>
+    <li>
+        <a href="get_simplextype.htm">get_simplextype</a>
+        <ul>
+            <li>return = mxlpsolve('get_simplextype', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_solutioncount.htm">get_solutioncount</a>
+        <ul>
+            <li>return = mxlpsolve('get_solutioncount', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_solutionlimit.htm">get_solutionlimit</a>
+        <ul>
+            <li>return = mxlpsolve('get_solutionlimit', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_status.htm">get_status</a>
+        <ul>
+            <li>return = mxlpsolve('get_status', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_statustext.htm">get_statustext</a>
+        <ul>
+            <li>return = mxlpsolve('get_statustext', lp_handle,
+    statuscode)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_timeout.htm">get_timeout</a>
+        <ul>
+            <li>return = mxlpsolve('get_timeout', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_total_iter.htm">get_total_iter</a>
+        <ul>
+            <li>return = mxlpsolve('get_total_iter', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_total_nodes.htm">get_total_nodes</a>
+        <ul>
+            <li>return = mxlpsolve('get_total_nodes', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_upbo.htm">get_upbo</a>
+        <ul>
+            <li>return = mxlpsolve('get_upbo', lp_handle, column)
+            <li>[upbo] = mxlpsolve('get_upbo', lp_handle)
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows retrieving the values into a MATLAB matrix.</li>
+        </ul>
+    <li>
+        <a href="get_var_branch.htm">get_var_branch</a>
+        <ul>
+            <li>return = mxlpsolve('get_var_branch', lp_handle,
+    column)
+            <li>[var_branch] = mxlpsolve('get_var_branch',
+    lp_handle)
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows retrieving the values into a MATLAB matrix.</li>
+        </ul>
+    <li>
+        <a href="get_sensitivity_rhs.htm">get_var_dualresult</a>
+        <ul>
+            <li>return = mxlpsolve('get_var_dualresult', lp_handle,
+    index)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_primal_solution.htm">get_var_primalresult</a>
+        <ul>
+            <li>return = mxlpsolve('get_var_primalresult',
+    lp_handle, index)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_var_priority.htm">get_var_priority</a>
+        <ul>
+            <li>return = mxlpsolve('get_var_priority', lp_handle,
+    column)
+            <li>[var_priority] = mxlpsolve('get_var_priority',
+    lp_handle)
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows retrieving the values into a MATLAB matrix.</li>
+        </ul>
+    <li>
+        <a href="get_variables.htm">get_variables</a>
+        <ul>
+            <li>[var, return] = mxlpsolve('get_variables',
+    lp_handle)
+            <li>The <i>var</i> argument in the
+    API documentation is here the first return value.
+            <li>The return code of the call is the second return value.</li>
+        </ul>
+    <li>
+        <a href="get_verbose.htm">get_verbose</a>
+        <ul>
+            <li>return = mxlpsolve('get_verbose', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="get_working_objective.htm">get_working_objective</a>
+        <ul>
+            <li>return = mxlpsolve('get_working_objective',
+    lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="has_BFP.htm">has_BFP</a>
+        <ul>
+            <li>return = mxlpsolve('has_BFP', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="has_XLI.htm">has_XLI</a>
+        <ul>
+            <li>return = mxlpsolve('has_XLI', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="is_add_rowmode.htm">is_add_rowmode</a>
+        <ul>
+            <li>return = mxlpsolve('is_add_rowmode', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="is_anti_degen.htm">is_anti_degen</a>
+        <ul>
+            <li>return = mxlpsolve('is_anti_degen', lp_handle,
+    testmask)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="is_binary.htm">is_binary</a>
+        <ul>
+            <li>return = mxlpsolve('is_binary', lp_handle, column)
+            <li>[binary] = mxlpsolve('is_binary', lp_handle)
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows retrieving the values into a MATLAB matrix.</li>
+        </ul>
+    <li>
+        <a href="is_break_at_first.htm">is_break_at_first</a>
+        <ul>
+            <li>return = mxlpsolve('is_break_at_first', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="is_constr_type.htm">is_constr_type</a>
+        <ul>
+            <li>return = mxlpsolve('is_constr_type', lp_handle,
+    row, mask)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="is_debug.htm">is_debug</a>
+        <ul>
+            <li>return = mxlpsolve('is_debug', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="is_feasible.htm">is_feasible</a>
+        <ul>
+            <li>return = mxlpsolve('is_feasible', lp_handle,
+    [values] {, threshold})
+            <li>The threshold argument is optional.
+                When not provided, the value of <A href="get_epsint.htm">get_epsint</A> will be taken.</li>
+        </ul>
+    <li>
+        <a href="is_free.htm">is_free</a>
+        <ul>
+            <li>return = mxlpsolve('is_free', lp_handle, column)
+            <li>[free] = mxlpsolve('is_free', lp_handle)
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows retrieving the values into a MATLAB matrix.</li>
+        </ul>
+    <li>
+        <a href="is_infinite.htm">is_infinite</a>
+        <ul>
+            <li>return = mxlpsolve('is_infinite', lp_handle, value)
+
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="is_int.htm">is_int</a>
+        <ul>
+            <li>return = mxlpsolve('is_int', lp_handle, column)
+            <li>[int] = mxlpsolve('is_int', lp_handle)
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows retrieving the values into a MATLAB matrix.</li>
+        </ul>
+    <li>
+        <a href="is_integerscaling.htm">is_integerscaling</a>
+        <ul>
+            <li>return = mxlpsolve('is_integerscaling', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="is_maxim.htm">is_maxim</a>
+        <ul>
+            <li>return = mxlpsolve('is_maxim', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="is_nativeBFP.htm">is_nativeBFP</a>
+        <ul>
+            <li>return = mxlpsolve('is_nativeBFP', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="is_nativeXLI.htm">is_nativeXLI</a>
+        <ul>
+            <li>return = mxlpsolve('is_nativeXLI', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="is_negative.htm">is_negative</a>
+        <ul>
+            <li>return = mxlpsolve('is_negative', lp_handle,
+    column)
+            <li>[negative] = mxlpsolve('is_negative', lp_handle)
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows retrieving the values into a MATLAB matrix.</li>
+        </ul>
+    <li>
+        <a href="is_piv_mode.htm">is_piv_mode</a>
+        <ul>
+            <li>return = mxlpsolve('is_piv_mode', lp_handle,
+    testmask)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="is_piv_rule.htm">is_piv_rule</a>
+        <ul>
+            <li>return = mxlpsolve('is_piv_rule', lp_handle, rule)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="is_presolve.htm">is_presolve</a>
+        <ul>
+            <li>return = mxlpsolve('is_presolve', lp_handle,
+    testmask)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="is_scalemode.htm">is_scalemode</a>
+        <ul>
+            <li>return = mxlpsolve('is_scalemode', lp_handle,
+    testmask)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="is_scaletype.htm">is_scaletype</a>
+        <ul>
+            <li>return = mxlpsolve('is_scaletype', lp_handle,
+    scaletype)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="is_semicont.htm">is_semicont</a>
+        <ul>
+            <li>return = mxlpsolve('is_semicont', lp_handle,
+    column)
+            <li>[semicont] = mxlpsolve('is_semicont', lp_handle)
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows retrieving the values into a MATLAB matrix.</li>
+        </ul>
+    <li>
+        <a href="is_SOS_var.htm">is_SOS_var</a>
+        <ul>
+            <li>return = mxlpsolve('is_SOS_var', lp_handle, column)
+
+            <li>[SOS_var] = mxlpsolve('is_SOS_var', lp_handle)
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows retrieving the values into a MATLAB matrix.</li>
+        </ul>
+    <li>
+        <a href="is_trace.htm">is_trace</a>
+        <ul>
+            <li>return = mxlpsolve('is_trace', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="lp_solve_version.htm">lp_solve_version</a>
+        <ul>
+            <li>versionstring = mxlpsolve('lp_solve_version')
+            <li>The mxlpsolve API routine returns the version information in 4 provided argument variables while the MATLAB version returns the information as a string in the format major.minor.release.build</li>
+        </ul>
+    <li>
+        <a href="make_lp.htm">make_lp</a>
+        <ul>
+            <li>lp_handle = mxlpsolve('make_lp', rows, columns)
+            <li>lp_handle is not a pointer to an lprec structure as in the API, but an incrementing handle number starting from 0.</li>
+        </ul>
+    <li>
+        <a href="print_constraints.htm">print_constraints</a>
+        <ul>
+			<li>mxlpsolve('print_constraints', lp_handle {,
+    columns})
+
+			<li>columns is optional. If not specified, then 1 is
+    used.
+
+			<li>First call set_outputfile to specify where the
+    information is written to. In the API documentation it is written that by
+    default, the output goes to stdout, but under MATLAB (Windows) this means
+    that the output is not shown.
+            <li>The same information can also be obtained via mxlpsolve('get_constraints', lp_handle). This shows the result on screen.</li>
+        </ul>
+    <li>
+        <a href="print_debugdump.htm">print_debugdump</a>
+        <ul>
+            <li>return = mxlpsolve('print_debugdump', lp_handle,
+    filename)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="print_duals.htm">print_duals</a>
+        <ul>
+			<li>mxlpsolve('print_duals', lp_handle)
+
+			<li>First call set_outputfile to specify where the
+    information is written to. In the API documentation it is written that by
+    default, the output goes to stdout, but under MATLAB (Windows) this means
+    that the output is not shown.
+            <li>The same information can be obtained via mxlpsolve('get_dual_solution', lp_handle). This shows the result on screen.</li>
+        </ul>
+    <li>
+        <a href="print_lp.htm">print_lp</a>
+        <ul>
+			<li>mxlpsolve('print_lp', lp_handle)
+
+			<li>First call set_outputfile to specify where the information is written to.
+			    In the API documentation it is written that by default, the output goes to stdout, but under MATLAB (Windows) this means that the output is not shown.</li>
+        </ul>
+    <li>
+        <a href="print_objective.htm">print_objective</a>
+        <ul>
+			<li>mxlpsolve('print_objective', lp_handle)
+
+			<li>First call set_outputfile to specify where the
+    information is written to. In the API documentation it is written that by
+    default, the output goes to stdout, but under MATLAB (Windows) this means
+    that the output is not shown.
+            <li>The same information can be obtained via mxlpsolve('get_objective', lp_handle). This shows the result on screen.</li>
+        </ul>
+    <li>
+        <a href="print_scales.htm">print_scales</a>
+        <ul>
+			<li>mxlpsolve('print_scales', lp_handle)
+
+			<li>First call set_outputfile to specify where the information is written to.
+			    In the API documentation it is written that by default, the output goes to stdout, but under MATLAB (Windows) this means that the output is not shown.</li>
+        </ul>
+    <li>
+        <a href="print_solution.htm">print_solution</a>
+        <ul>
+			<li>mxlpsolve('print_solution', lp_handle {, columns})
+
+			<li>columns is optional. If not specified, then 1 is
+    used.
+
+			<li>First call set_outputfile to specify where the
+    information is written to. In the API documentation it is written that by
+    default, the output goes to stdout, but under MATLAB (Windows) this means
+    that the output is not shown.
+            <li>The same information can also be obtained via mxlpsolve('get_variables', lp_handle). This shows the result on screen.</li>
+        </ul>
+    <li>
+        <a href="print_str.htm">print_str</a>
+        <ul>
+			<li>mxlpsolve('print_str', lp_handle, str)
+
+			<li>First call set_outputfile to specify where the information is written to.
+			    In the API documentation it is written that by default, the output goes to stdout, but under MATLAB (Windows) this means that the output is not shown.</li>
+        </ul>
+    <li>
+        <a href="print_tableau.htm">print_tableau</a>
+        <ul>
+			<li>mxlpsolve('print_tableau', lp_handle)
+
+			<li>First call set_outputfile to specify where the information is written to.
+			    In the API documentation it is written that by default, the output goes to stdout, but under MATLAB (Windows) this means that the output is not shown.</li>
+        </ul>
+    <li>
+        <a href="put_abortfunc.htm">put_abortfunc</a>
+        <ul>
+            <li>Not implemented.</li>
+        </ul>
+    <li>
+        <a href="put_logfunc.htm">put_logfunc</a>
+        <ul>
+            <li>Not implemented.
+            <li>However, the mxlpsolve driver sets a log function to redirect the output of lpsolve from stdout (which is not visible in Windows MATLAB) to the command window of MATLAB.
+                As such, all reported output can be seen in MATLAB. How much output is seen is controlled by the verbose level that can be defined by set_verbose or can be specified in the read_ routines.</li>
+        </ul>
+    <li>
+        <a href="put_msgfunc.htm">put_msgfunc</a>
+        <ul>
+            <li>Not implemented.</li>
+        </ul>
+    <li>
+        <a href="read_mps.htm">read_freemps, read_freeMPS</a>
+        <ul>
+            <li>lp_handle = mxlpsolve('read_freemps', filename {,
+    verbose})
+            <li>lp_handle = mxlpsolve('read_freeMPS', filename {,
+    verbose})
+            <li>In the lpsolve API, read_freemps needs a FILE
+    handle. In MATLAB it needs the filename and thus acts the same as
+    read_freeMPS.
+            <li>lp_handle is not a pointer to an lprec structure as
+    in the API, but an incrementing handle number starting from 0.
+            <li>verbose is optional. If not specified, then NORMAL is used.</li>
+        </ul>
+    <li>
+        <a href="read_lp.htm">read_lp, read_LP</a>
+        <ul>
+			<li>lp_handle = mxlpsolve('read_lp', filename {,
+    verbose {, lp_name}})
+            <li>lp_handle = mxlpsolve('read_LP', filename {,
+    verbose {, lp_name}})
+            <li>In the lpsolve API, read_lp needs a FILE handle. In
+    MATLAB it needs the filename and thus acts the same as read_LP.
+            <li>lp_handle is not a pointer to an lprec structure as
+    in the API, but an incrementing handle number starting from 0.
+            <li>verbose is optional. If not provided then NORMAL is
+    used.
+            <li>lp_name is optional. If not provided then no name is given to the model ('').</li>
+        </ul>
+    <li>
+        <a href="read_MPS.htm">read_mps, read_MPS</a>
+        <ul>
+			<li>lp_handle = mxlpsolve('read_mps', filename {,
+    verbose})
+            <li>lp_handle = mxlpsolve('read_MPS', filename {,
+    verbose})
+            <li>In the lpsolve API, read_mps needs a FILE handle.
+    In MATLAB it needs the filename and thus acts the same as read_MPS.
+            <li>lp_handle is not a pointer to an lprec structure as
+    in the API, but an incrementing handle number starting from 0.
+            <li>verbose is optional. If not specified, then NORMAL is used.</li>
+        </ul>
+    <li>
+        <a href="read_XLI.htm">read_XLI</a>
+        <ul>
+            <li>lp_handle = mxlpsolve('read_XLI', xliname,
+    modelname {, dataname {, options {, verbose}}}
+            <li>lp_handle is not a pointer to an lprec structure as
+    in the API, but an incrementing handle number starting from 0.
+            <li>dataname is optional. When not provided, '' (NULL)
+    is taken. '' is taken as NULL.
+            <li>options is optional. When not provided, '' is
+    taken.
+            <li>verbose is optional. If not specified, then NORMAL is used.</li>
+        </ul>
+    <li>
+        <a href="reset_basis.htm">reset_basis</a>
+        <ul>
+            <li>Not implemented.
+            <li>Use <A href="default_basis.htm">default_basis</A></li>
+        </ul>
+    <li>
+        <a href="set_add_rowmode.htm">set_add_rowmode</a>
+        <ul>
+            <li>return = mxlpsolve('set_add_rowmode', lp_handle,
+    turnon)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_anti_degen.htm">set_anti_degen</a>
+        <ul>
+            <li>mxlpsolve('set_anti_degen', lp_handle, anti_degen)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_basis.htm">set_basis</a>
+        <ul>
+            <li>return = mxlpsolve('set_basis', lp_handle,
+    [bascolumn], nonbasic)
+            <li>In the API, element 0 of <i>bascolumn</i> is not used and values start from element 1. In MATLAB, there is no unused element in the matrix.</li>
+        </ul>
+    <li>
+        <a href="set_basiscrash.htm">set_basiscrash</a>
+        <ul>
+            <li>mxlpsolve('set_basiscrash', lp_handle, mode)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_bb_depthlimit.htm">set_bb_depthlimit</a>
+        <ul>
+            <li>mxlpsolve('set_bb_depthlimit', lp_handle,
+    bb_maxlevel)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_bb_floorfirst.htm">set_bb_floorfirst</a>
+        <ul>
+            <li>mxlpsolve('set_bb_floorfirst', lp_handle,
+    bb_floorfirst)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_bb_rule.htm">set_bb_rule</a>
+        <ul>
+            <li>mxlpsolve('set_bb_rule', lp_handle, bb_rule)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_BFP.htm">set_BFP</a>
+        <ul>
+            <li>return = mxlpsolve('set_BFP', lp_handle, filename)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_binary.htm">set_binary</a>
+        <ul>
+            <li>return = mxlpsolve('set_binary', lp_handle, column,
+    must_be_bin)
+            <li>return = mxlpsolve('set_binary', lp_handle,
+    [must_be_bin])
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows setting a matrix of all variables.</li>
+        </ul>
+    <li>
+        <a href="set_bounds.htm">set_bounds</a>
+        <ul>
+            <li>return = mxlpsolve('set_bounds', lp_handle, column,
+    lower, upper)
+            <li>return = mxlpsolve('set_bounds', lp_handle,
+    [lower], [upper])
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows setting a matrix of all variables.</li>
+        </ul>
+    <li>
+        <a href="set_bounds_tighter.htm">set_bounds_tighter</a>
+        <ul>
+            <li>mxlpsolve('set_bounds_tighter', lp_handle, tighten)
+
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_break_at_first.htm">set_break_at_first</a>
+        <ul>
+            <li>mxlpsolve('set_break_at_first', lp_handle,
+    break_at_first)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_break_at_value.htm">set_break_at_value</a>
+        <ul>
+            <li>mxlpsolve('set_break_at_value', lp_handle,
+    break_at_value)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_col_name.htm">set_col_name</a>
+        <ul>
+            <li>return = mxlpsolve('set_col_name', lp_handle,
+    column, name)
+            <li>return = mxlpsolve('set_col_name', lp_handle,
+    [names])
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows setting a matrix of all variables.</li>
+        </ul>
+    <li>
+        <a href="set_column.htm">set_column, set_columnex</a>
+        <ul>
+            <li>return = mxlpsolve('set_column', lp_handle, col_no,
+    [column])
+            <li>return = mxlpsolve('set_columnex', lp_handle,
+    col_no, [column])
+            <li>Both have the same interface from <a href="set_column.htm">set_column</a> but act as <a href="set_column.htm">set_columnex</a></li>
+        </ul>
+    <li>
+        <a href="set_constr_type.htm">set_constr_type</a>
+        <ul>
+            <li>return = mxlpsolve('set_constr_type', lp_handle,
+    row, con_type)
+            <li>return = mxlpsolve('set_constr_type', lp_handle,
+    [con_type])
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows setting a matrix of all rows.</li>
+        </ul>
+    <li>
+        <a href="set_debug.htm">set_debug</a>
+        <ul>
+            <li>mxlpsolve('set_debug', lp_handle, debug)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_epsb.htm">set_epsb</a>
+        <ul>
+            <li>mxlpsolve('set_epsb', lp_handle, epsb)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_epsd.htm">set_epsd</a>
+        <ul>
+            <li>mxlpsolve('set_epsd', lp_handle, epsd)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_epsel.htm">set_epsel</a>
+        <ul>
+            <li>mxlpsolve('set_epsel', lp_handle, epsel)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_epsint.htm">set_epsint</a>
+        <ul>
+            <li>mxlpsolve('set_epsint', lp_handle, epsint)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_epsperturb.htm">set_epsperturb</a>
+        <ul>
+            <li>mxlpsolve('set_epsperturb', lp_handle, epsperturb)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_epspivot.htm">set_epspivot</a>
+        <ul>
+            <li>mxlpsolve('set_epspivot', lp_handle, epspivot)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_free.htm">set_free</a>
+        <ul>
+            <li>return = mxlpsolve('set_free', lp_handle, column)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_improve.htm">set_improve</a>
+        <ul>
+            <li>mxlpsolve('set_improve', lp_handle, improve)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_infinite.htm">set_infinite</a>
+        <ul>
+            <li>mxlpsolve('set_infinite', lp_handle, infinite)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_int.htm">set_int</a>
+        <ul>
+            <li>return = mxlpsolve('set_int', lp_handle, column,
+    must_be_int)
+            <li>return = mxlpsolve('set_int', lp_handle,
+    [must_be_int])
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows setting a matrix of all variables.</li>
+        </ul>
+    <li>
+        <a href="set_lowbo.htm">set_lowbo</a>
+        <ul>
+            <li>return = mxlpsolve('set_lowbo', lp_handle, column,
+    value)
+            <li>return = mxlpsolve('set_lowbo', lp_handle,
+    [values])
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows setting a matrix of all variables.</li>
+        </ul>
+    <li>
+        <a href="set_lp_name.htm">set_lp_name</a>
+        <ul>
+            <li>return = mxlpsolve('set_lp_name', lp_handle, name)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_mat.htm">set_mat</a>
+        <ul>
+            <li>return = mxlpsolve('set_mat', lp_handle, row,
+    column, value)
+            <li>return = mxlpsolve('set_mat', lp_handle, [matrix])
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows to set the whole matrix (all rows/columns) at once.
+                This is the most performant way to provide the constraint matrix. Consider using a MATLAB sparse matrix for maximum performance and least memory usage.
+                The matrix must be two-dimentional.</li>
+        </ul>
+    <li>
+        <a href="set_maxim.htm">set_maxim</a>
+        <ul>
+            <li>mxlpsolve('set_maxim', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_maxpivot.htm">set_maxpivot</a>
+        <ul>
+            <li>mxlpsolve('set_maxpivot', max_num_inv)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_minim.htm">set_minim</a>
+        <ul>
+            <li>mxlpsolve('set_minim', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_mip_gap.htm">set_mip_gap</a>
+        <ul>
+            <li>mxlpsolve('set_mip_gap', lp_handle, absolute,
+    mip_gap)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_negrange.htm">set_negrange</a>
+        <ul>
+            <li>mxlpsolve('set_negrange', negrange)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_obj_fn.htm">set_obj</a>
+        <ul>
+            <li>return = mxlpsolve('set_obj', lp_handle, column,
+    value)
+            <li>return = mxlpsolve('set_obj', lp_handle, [values])
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows setting a matrix of all variables. It is then the same as set_obj_fn</li>
+        </ul>
+    <li>
+        <a href="set_obj_bound.htm">set_obj_bound</a>
+        <ul>
+            <li>mxlpsolve('set_obj_bound', lp_handle, obj_bound)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_obj_fn.htm">set_obj_fn, set_obj_fnex</a>
+        <ul>
+            <li>return = mxlpsolve('set_obj_fn', lp_handle, [row])
+            <li>return = mxlpsolve('set_obj_fnex', lp_handle,
+    [row])
+            <li>Both have the same interface from <a href="set_obj_fn.htm">set_obj_fn</a> but act as <a href="set_obj_fn.htm">set_obj_fnex</a>
+            <li>In the API, element 0 is not used and values start from element 1. In MATLAB, there is no unused element in the matrix.</li>
+        </ul>
+    <li>
+        <a href="set_output.htm">set_outputfile</a>
+        <ul>
+            <li>return = mxlpsolve('set_outputfile', lp_handle,
+    filename)
+            <li>In the API description it says that setting filename to NULL results in writing output back to stdout.
+                In MATLAB under Windows, output to stdout it not shown. However it results in closing the file.
+                Use '' to have the effect of NULL.</li>
+        </ul>
+    <li>
+        <a href="set_output.htm">set_outputstream</a>
+        <ul>
+            <li>Not implemented.</li>
+        </ul>
+    <li>
+        <a href="set_pivoting.htm">set_pivoting</a>
+        <ul>
+            <li>mxlpsolve('set_pivoting', lp_handle, pivoting)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_preferdual.htm">set_preferdual</a>
+        <ul>
+            <li>mxlpsolve('set_preferdual', lp_handle, dodual)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_presolve.htm">set_presolve</a>
+        <ul>
+            <li>mxlpsolve('set_presolve', lp_handle, do_presolve)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_print_sol.htm">set_print_sol</a>
+        <ul>
+            <li>mxlpsolve('set_print_sol', lp_handle, print_sol)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_rh.htm">set_rh</a>
+        <ul>
+            <li>return = mxlpsolve('set_rh', lp_handle, row, value)
+
+            <li>return = mxlpsolve('set_rh', lp_handle, [values])
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows setting a matrix of all rows. Note that in this case, the value of row 0 is not specified in the matrix.</li>
+        </ul>
+    <li>
+        <a href="set_rh_range.htm">set_rh_range</a>
+        <ul>
+            <li>return = mxlpsolve('set_rh_range', lp_handle, row,
+    deltavalue)
+            <li>return = mxlpsolve('set_rh_range', lp_handle,
+    [deltavalues])
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows setting a matrix of all rows.</li>
+        </ul>
+    <li>
+        <a href="set_rh_vec.htm">set_rh_vec</a>
+        <ul>
+            <li>mxlpsolve('set_rh_vec', lp_handle, [rh])
+            <li>In the API, element 0 is not used and values start from element 1. In MATLAB, there is no unused element in the matrix.</li>
+        </ul>
+    <li>
+        <a href="set_row.htm">set_row, set_rowex</a>
+        <ul>
+            <li>return = mxlpsolve('set_row', lp_handle, row_no,
+    [row])
+            <li>return = mxlpsolve('set_rowex', lp_handle, row_no,
+    [row])
+            <li>Both have the same interface from <a href="set_row.htm">set_row</a> but act as <a href="set_row.htm">set_rowex</a>
+            <li>In the API, element 0 is not used and values start from element 1. In MATLAB, there is no unused element in the matrix.</li>
+        </ul>
+    <li>
+        <a href="set_row_name.htm">set_row_name</a>
+        <ul>
+            <li>return = mxlpsolve('set_row_name', lp_handle, row,
+    name)
+            <li>return = mxlpsolve('set_row_name', lp_handle,
+    [names])
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows setting a matrix of all rows.</li>
+        </ul>
+    <li>
+        <a href="set_scalelimit.htm">set_scalelimit</a>
+        <ul>
+            <li>mxlpsolve('set_scalelimit', lp_handle, scalelimit)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_scaling.htm">set_scaling</a>
+        <ul>
+            <li>mxlpsolve('set_scaling', lp_handle, scalemode)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_semicont.htm">set_semicont</a>
+        <ul>
+            <li>return = mxlpsolve('set_semicont', lp_handle,
+    column, must_be_sc)
+            <li>return = mxlpsolve('set_semicont', lp_handle,
+    [must_be_sc])
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows setting a matrix of all variables.</li>
+        </ul>
+    <li>
+        <a href="set_sense.htm">set_sense</a>
+        <ul>
+            <li>mxlpsolve('set_sense', lp_handle, maximize)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_simplextype.htm">set_simplextype</a>
+        <ul>
+            <li>mxlpsolve('set_simplextype', lp_handle,
+    simplextype)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_solutionlimit.htm">set_solutionlimit</a>
+        <ul>
+            <li>mxlpsolve('set_solutionlimit', lp_handle,
+    simplextype)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_timeout.htm">set_timeout</a>
+        <ul>
+            <li>mxlpsolve('set_timeout', lp_handle, sectimeout)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_trace.htm">set_trace</a>
+        <ul>
+            <li>mxlpsolve('set_trace', lp_handle, trace)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_upbo.htm">set_upbo</a>
+        <ul>
+            <li>return = mxlpsolve('set_upbo', lp_handle, column,
+    value)
+            <li>return = mxlpsolve('set_upbo', lp_handle, [values])
+
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows setting a matrix of all variables.</li>
+        </ul>
+    <li>
+        <a href="set_var_branch.htm">set_var_branch</a>
+        <ul>
+            <li>return = mxlpsolve('set_var_branch', lp_handle,
+    column, branch_mode)
+            <li>return = mxlpsolve('set_var_branch', lp_handle,
+    [branch_mode])
+            <li>In MATLAB, this routine has two formats. The first format is identical to the API.
+                The second format allows setting a matrix of all variables.</li>
+        </ul>
+    <li>
+        <a href="set_var_weights.htm">set_var_weights</a>
+        <ul>
+            <li>return = mxlpsolve('set_var_weights', lp_handle,
+    [weights])
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_verbose.htm">set_verbose</a>
+        <ul>
+            <li>mxlpsolve('set_verbose', lp_handle, verbose)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="set_XLI.htm">set_XLI</a>
+        <ul>
+            <li>return = mxlpsolve('set_XLI', lp_handle, filename)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="solve.htm">solve</a>
+        <ul>
+            <li>result = mxlpsolve('solve', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="add_column.htm">str_add_column</a>
+        <ul>
+            <li>Not implemented.</li>
+        </ul>
+    <li>
+        <a href="add_constraint.htm">str_add_constraint</a>
+        <ul>
+            <li>Not implemented.</li>
+        </ul>
+    <li>
+        <a href="set_obj_fn.htm">str_set_obj_fn</a>
+        <ul>
+            <li>Not implemented.</li>
+        </ul>
+    <li>
+        <a href="set_rh_vec.htm">str_set_rh_vec</a>
+        <ul>
+            <li>Not implemented.</li>
+        </ul>
+    <li>
+        <a href="time_elapsed.htm">time_elapsed</a>
+        <ul>
+            <li>return = mxlpsolve('time_elapsed', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="unscale.htm">unscale</a>
+        <ul>
+            <li>mxlpsolve('unscale', lp_handle)
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="write_mps.htm">write_freemps, write_freeMPS</a>
+        <ul>
+            <li>return = mxlpsolve('write_freemps', lp_handle,
+    filename)
+            <li>return = mxlpsolve('write_freeMPS', lp_handle,
+    filename)
+            <li>In the lpsolve API, write_freeMPS needs a FILE handle. In MATLAB it needs the filename and thus acts the same as write_freemps.</li>
+        </ul>
+    <li>
+        <a href="write_lp.htm">write_lp, write_LP</a>
+        <ul>
+            <li>return = mxlpsolve('write_lp', lp_handle, filename)
+
+            <li>return = mxlpsolve('write_LP', lp_handle, filename)
+
+            <li>In the lpsolve API, write_LP needs a FILE handle. In MATLAB it needs the filename and thus acts the same as write_lp.</li>
+        </ul>
+    <li>
+        <a href="write_mps.htm">write_mps, write_MPS</a>
+        <ul>
+            <li>return = mxlpsolve('write_mps', lp_handle,
+    filename)
+            <li>return = mxlpsolve('write_MPS', lp_handle,
+    filename)
+            <li>In the lpsolve API, write_MPS needs a FILE handle.
+    In MATLAB it needs the filename and thus acts the same as write_mps.
+            <li>No special considerations.</li>
+        </ul>
+    <li>
+        <a href="write_XLI.htm">write_XLI</a>
+        <ul>
+            <li>return = mxlpsolve('write_XLI', lp_handle, filename
+    {, options {, results}})
+            <li>No special considerations.</li>
+        </ul>
+    </li>
+</ul>
+
+<h3>Extra MATLAB routines</h3>
+
+<p>These routines are not part of the lpsolve API, but are added for backwards compatibility.
+Most of them exist in the lpsolve API with another name.</p>
+
+<ul>
+	<li>[names] = mxlpsolve('get_col_names', lp_handle)
+        <ul>
+            <li>The same as get_col_name. Implemented for backwards compatibility.</li>
+        </ul>
+	<li>[constr_type] = mxlpsolve('get_constr_types', lp_handle)
+        <ul>
+            <li>The same as get_constr_type. Implemented for backwards compatibility.</li>
+        </ul>
+    <li>[int] = mxlpsolve('get_int', lp_handle)
+        <ul>
+            <li>The same as is_int. Implemented for backwards compatibility.</li>
+        </ul>
+    <li>return = mxlpsolve('get_no_cols', lp_handle)
+        <ul>
+            <li>The same as get_Ncolumns. Implemented for backwards compatibility.</li>
+        </ul>
+    <li>return = mxlpsolve('get_no_rows', lp_handle)
+        <ul>
+            <li>The same as get_Nrows. Implemented for backwards compatibility.</li>
+        </ul>
+    <li>name = mxlpsolve('get_objective_name', lp_handle)
+        <ul>
+            <li>The same as get_row_name with row=0. Implemented for backwards compatibility.</li>
+        </ul>
+    <li>[row_vec, return] = mxlpsolve('get_obj_fn', lp_handle)<br>
+        [row_vec, return] =
+           mxlpsolve('get_obj_fun', lp_handle)
+        <ul>
+            <li>The same as get_row with row 0. Implemented for backwards compatibility.</li>
+        </ul>
+    <li>name = mxlpsolve('get_problem_name', lp_handle)
+        <ul>
+            <li>The same as get_lp_name. Implemented for backwards compatibility.</li>
+        </ul>
+    <li>[costs] = mxlpsolve('get_reduced_costs', lp_handle)
+        <ul>
+            <li>The same as get_dual_solution. Implemented for backwards compatibility.</li>
+        </ul>
+	<li>[names] = mxlpsolve('get_row_names', lp_handle)
+        <ul>
+            <li>The same as get_row_name. Implemented for backwards compatibility.</li>
+        </ul>
+    <li>[obj, x, duals, return] = mxlpsolve('get_solution', lp_handle)
+        <ul>
+            <li>Returns the value of the objective function, the
+    values of the variables and the duals. Implemented for backwards
+    compatibility.
+            <li>The return code of the call is the last value.</li>
+        </ul>
+    <li>value = mxlpsolve('mat_elm', lp_handle)
+        <ul>
+            <li>The same as get_mat. Implemented for backwards compatibility.</li>
+        </ul>
+    <li>[handle_vec] = mxlpsolve('print_handle')
+        <ul>
+            <li>Returns a vector with open handles.
+                Can be handy to see which handles aren't closed yet with delete_lp or free_lp.</li>
+        </ul>
+    <li>lp_handle = mxlpsolve('read_lp_file', filename {, verbose {, lp_name}})
+        <ul>
+            <li>The same as read_LP. Implemented for backwards compatibility.</li>
+        </ul>
+    </li>
+</ul>
+
+<h3>Compile the mxlpsolve driver</h3>
+<h4>Windows</h4>
+
+<p>Under Windows, the mxlpsolve MATLAB driver is a dll: mxlpsolve.dll<br>
+This dll is an interface to the lpsolve51.dll lpsolve dll that contains the implementation of lp_solve.
+lpsolve51.dll is distributed with the lp_solve package. The mxlpsolve MATLAB driver dll (mxlpsolve.dll) is just
+a wrapper between MATLAB and lp_solve to translate the input/output to/from MATLAB and the lp_solve library.
+</p>
+
+<p>The mxlpsolve MATLAB driver is written in C. To compile this code, the MATLAB compiler is needed (mex).
+This compiler must be called from MATLAB. To make the compilation process easier, a makefile can be used:
+MakefileWin.m<br>
+Enter 'help MakefileWin' from the MATLAB command window to see a list of options.<br>
+It may be necessary to edit this file first to change the path where lp_solve is installed.
+Change at the beginning lpsolvepath.<br>
+To make for release, just enter MakefileWin and everything is build.<br>
+This compiles two source files: lpsolve.c and hash.c<br>
+Then these are linked with the library lp_explicit.lib to generate the mxlpsolve.dll file. The lp_explicit.lib
+file is a wrapper library between the lp_solve dll and the compiled application. This wrapper is needed because
+the lp_solve dll uses __stdcall calling convention. There seems to be a problem in MATLAB to call __stdcall
+functions directly (unexpected crashes). The lp_explicit library uses __cdecl calling convention and this then
+calls the lp_solve dll which uses __stdcall calling convention. Looks a bit complex, but it works without any
+problem.<br>
+The optional arguments to MakefileWin are used for development. The first argument allows specifying a filename
+so that only this file is build. For example hash.c should only be compiled once while developing. So specifying
+'lpsolve.c' as first argument will only compile this file and then link everything. This makes the build process a bit faster.
+The second argument is by default 0. When set to 1, then extra argument checking is done and while executing,
+some debug information is printed. Should only be used for debugging purposes. When released, this parameter should be 0.
+The third argument is by default 1. When set to 0, the makefile will not ask to press enter to start building.
+</p>
+
+<p>There appears to be another way to compile MATLAB mex files with gcc for Windows. This is not tested.
+See <a href="http://gnumex.sourceforge.net/">Compiling Matlab mex files with gcc for Windows</a>.</p>
+
+<h4>Unix/Linux</h4>
+
+<p>Untested! Should be something like.<br><br>
+&lt;MATLAB-DIR&gt;/bin/mex -I../../.. -L../../../lpsolve51 -O3 lpsolve.c hash.c -llpsolve51 -lm</p>
+
+<p>Note: A full path to mex has been given in case teTeX is installed and so there is
+another mex:</p>
+
+<pre>$ which mex
+/usr/local/teTeX/bin/mex
+</pre>
+
+<p>If anyone has made this work, please let know to <a href="mailto:peno@mailme.org">Peter Notebaert</a> to update this document.</p>
+
+<p>See also <a href="Scilab.htm">Using lpsolve from Scilab</a>, <a href="O-Matrix.htm">Using lpsolve from O-Matrix</a></p>
+	</BODY>
+</html>
